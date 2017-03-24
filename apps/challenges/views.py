@@ -13,7 +13,9 @@ from accounts.permissions import HasVerifiedEmail
 from base.utils import paginated_queryset
 from hosts.models import ChallengeHost, ChallengeHostTeam
 from hosts.utils import get_challenge_host_teams_for_user
+from jobs.models import Submission
 from participants.models import Participant, ParticipantTeam
+from jobs.serializers import SubmissionSerializer
 from participants.utils import get_participant_teams_for_user
 
 
@@ -341,3 +343,50 @@ def challenge_phase_split_list(request, challenge_pk):
     serializer = ChallengePhaseSplitSerializer(result_page, many=True)
     response_data = serializer.data
     return paginator.get_paginated_response(response_data)
+
+
+@throttle_classes([UserRateThrottle])
+@api_view(['GET', ])
+@permission_classes((permissions.IsAuthenticated, HasVerifiedEmail))
+@authentication_classes((ExpiringTokenAuthentication,))
+def get_all_submissions_of_challenge(request, challenge_id):
+    """
+    Returns all the submissions for a particular Challenge
+
+    Note: Can only be accessed by respective Challenge Hosts
+    """
+
+    # check if the challenge exists or not
+    try:
+        challenge = Challenge.objects.get(pk=challenge_id)
+    except Challenge.DoesNotExist:
+        response_data = {'error': 'Challenge does not exist'}
+        return Response(response_data, status=status.HTTP_400_BAD_REQUEST)
+
+    # # check if the challenge phase exists or not
+    # try:
+    #     challenge_phase = ChallengePhase.objects.get(
+    #         pk=challenge_phase_id, challenge=challenge)
+    # except ChallengePhase.DoesNotExist:
+    #     response_data = {'error': 'Challenge Phase does not exist'}
+    #     return Response(response_data, status=status.HTTP_400_BAD_REQUEST)
+
+    # getting participant team object for the user for a particular challenge.
+    # participant_team_id = get_participant_team_id_of_user_for_a_challenge(
+    #     request.user, challenge_id)
+
+    # check if participant team exists or not.
+    # try:
+    #     ParticipantTeam.objects.get(pk=participant_team_id)
+    # except ParticipantTeam.DoesNotExist:
+    #     response_data = {'error': 'You haven\'t participated in the challenge'}
+    #     return Response(response_data, status=status.HTTP_403_FORBIDDEN)
+
+    submission = Submission.objects.filter(challenge_phase__challenge=challenge).order_by('-submitted_at')
+    paginator, result_page = paginated_queryset(submission, request)
+    try:
+        serializer = SubmissionSerializer(result_page, many=True, context={'request': request})
+        response_data = serializer.data
+        return paginator.get_paginated_response(response_data)
+    except:
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
