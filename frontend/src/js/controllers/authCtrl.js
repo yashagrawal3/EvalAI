@@ -11,7 +11,6 @@
 
     function AuthCtrl(utilities, $state, $rootScope) {
         var vm = this;
-
         vm.isRem = false;
         vm.isMail = true;
         vm.userMail = '';
@@ -112,8 +111,8 @@
 
                                 }
 
-                            } catch (error) { /*eslint no-console: ["error", {allow: ["warn", "error"]}]*/
-                                console.error(error);
+                            } catch (error) { 
+                                console.log(error);
                             }
                         }
                         vm.stopLoader();
@@ -157,8 +156,8 @@
                                 if (non_field_errors) {
                                     vm.FormError = response.data.non_field_errors[0];
                                 }
-                            } catch (error) { /*eslint no-console: ["error", {allow: ["warn", "error"]}]*/
-                                console.error(error);
+                            } catch (error) {
+                                console.log(error);
                             }
                         }
                         vm.stopLoader();
