@@ -26,7 +26,7 @@ from accounts.permissions import HasVerifiedEmail
 from base.utils import paginated_queryset
 from challenges.utils import get_challenge_model
 from hosts.models import ChallengeHost, ChallengeHostTeam
-from hosts.utils import get_challenge_host_teams_for_user, is_user_a_host_of_challenge, get_challenge_host_team_model
+from hosts.utils import get_challenge_host_teams_for_user, is_user_a_host_of_challenge,  get_challenge_host_team_model
 from jobs.models import Submission
 from jobs.serializers import SubmissionSerializer, ChallengeSubmissionManagementSerializer
 from participants.models import Participant, ParticipantTeam
@@ -735,4 +735,100 @@ def get_all_submissions_of_challenge(request, challenge_pk, challenge_phase_pk):
     # when user is neither host not participant of the challenge.
     else:
         response_data = {'error': 'You are neither host nor participant of the challenge!'}
+        return Response(response_data, status=status.HTTP_400_BAD_REQUEST)
+
+
+@throttle_classes([UserRateThrottle])
+@api_view(['POST'])
+@permission_classes((permissions.IsAuthenticated, HasVerifiedEmail))
+@authentication_classes((ExpiringTokenAuthentication,))
+def create_challenge(request, challenge_host_team_pk):
+    challenge_host_team = get_challenge_host_team_model(challenge_host_team_pk)
+    serializer = ZipChallengeSerializer(data=request.data,
+                                        context={'request': request,
+                                                 'challenge_host_team': challenge_host_team})    
+    if serializer.is_valid():
+        serializer.save()
+        response_data = serializer.data
+        return Response(response_data, status=status.HTTP_201_CREATED)
+    else:
+        response_data = serializer.errors
+        return Response(response_data, status=status.HTTP_400_BAD_REQUEST)
+
+
+@throttle_classes([UserRateThrottle])
+@api_view(['POST'])
+@permission_classes((permissions.IsAuthenticated, HasVerifiedEmail))
+@authentication_classes((ExpiringTokenAuthentication,))
+def create_leaderboard(request):
+    if request.data == []:
+        response_data = {'error': 'The leaderboard can\'t be blank!'}
+        return Response(response_data, status=status.HTTP_400_BAD_REQUEST)
+
+    serializer = LeaderboardSerializer(data=request.data, many=True)
+    if serializer.is_valid():
+        serializer.save()
+        response_data = serializer.data
+        return Response(response_data, status=status.HTTP_201_CREATED)
+    else:
+        response_data = serializer.errors
+        return Response(response_data, status=status.HTTP_400_BAD_REQUEST)
+
+
+@throttle_classes([UserRateThrottle])
+@api_view(['POST'])
+@permission_classes((permissions.IsAuthenticated, HasVerifiedEmail))
+@authentication_classes((ExpiringTokenAuthentication,))
+def create_challenge_phase(request, challenge_pk):
+    if request.data == []:
+        response_data = {'error': 'The challenge phase can\'t be blank!'}
+        return Response(response_data, status=status.HTTP_400_BAD_REQUEST)
+
+    challenge = get_challenge_model(challenge_pk) # noqa
+
+    serializer = ChallengePhaseUiSerializer(data=request.data, many=True)
+    if serializer.is_valid():
+        serializer.save()
+        response_data = serializer.data
+        return Response(response_data, status=status.HTTP_201_CREATED)
+    else:
+        response_data = serializer.errors
+        return Response(response_data, status=status.HTTP_400_BAD_REQUEST)
+
+
+@throttle_classes([UserRateThrottle])
+@api_view(['POST'])
+@permission_classes((permissions.IsAuthenticated, HasVerifiedEmail))
+@authentication_classes((ExpiringTokenAuthentication,))
+def create_dataset_split(request):
+    if request.data == []:
+        response_data = {'error': 'The dataset split can\'t be blank!'}
+        return Response(response_data, status=status.HTTP_400_BAD_REQUEST)
+
+    serializer = DatasetSplitSerializer(data=request.data, many=True)
+    if serializer.is_valid():
+        serializer.save()
+        response_data = serializer.data
+        return Response(response_data, status=status.HTTP_201_CREATED)
+    else:
+        response_data = serializer.errors
+        return Response(response_data, status=status.HTTP_400_BAD_REQUEST)
+
+
+@throttle_classes([UserRateThrottle])
+@api_view(['POST'])
+@permission_classes((permissions.IsAuthenticated, HasVerifiedEmail))
+@authentication_classes((ExpiringTokenAuthentication,))
+def create_challenge_phase_split(request):
+    if request.data == []:
+        response_data = {'error': 'The challenge phase split can\'t be blank!'}
+        return Response(response_data, status=status.HTTP_400_BAD_REQUEST)
+
+    serializer = ZipChallengePhaseSplitSerializer(data=request.data, many=True)
+    if serializer.is_valid():
+        serializer.save()
+        response_data = serializer.data
+        return Response(response_data, status=status.HTTP_201_CREATED)
+    else:
+        response_data = serializer.errors
         return Response(response_data, status=status.HTTP_400_BAD_REQUEST)
