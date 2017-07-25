@@ -33,13 +33,19 @@ from participants.models import Participant, ParticipantTeam
 from participants.utils import (get_participant_teams_for_user,
                                 has_user_participated_in_challenge,
                                 get_participant_team_id_of_user_for_a_challenge,)
+from challenges.serializers import ZipChallengeSerializer
+from hosts.models import ChallengeHost, ChallengeHostTeam
+from hosts.utils import get_challenge_host_teams_for_user, get_challenge_host_team_model
+from participants.models import Participant, ParticipantTeam
+from participants.utils import get_participant_teams_for_user, has_user_participated_in_challenge
 
 from .models import Challenge, ChallengePhase, ChallengePhaseSplit, ChallengeConfiguration
 from .permissions import IsChallengeCreator
-from .serializers import (ChallengeConfigSerializer,
+from .serializers import (ChallengeSerializer,
+                          ChallengeConfigSerializer,
                           ChallengePhaseSerializer,
                           ChallengePhaseSplitSerializer,
-                          ChallengeSerializer,
+                          ChallengePhaseDisplaySerializer,
                           DatasetSplitSerializer,
                           LeaderboardSerializer,
                           ZipChallengeSerializer,
@@ -749,6 +755,8 @@ def create_challenge(request, challenge_host_team_pk):
                                                  'challenge_host_team': challenge_host_team})    
     if serializer.is_valid():
         serializer.save()
+        challenge = get_challenge_model(serializer.instance.pk)
+        serializer = ChallengeSerializer(challenge)
         response_data = serializer.data
         return Response(response_data, status=status.HTTP_201_CREATED)
     else:
@@ -761,11 +769,8 @@ def create_challenge(request, challenge_host_team_pk):
 @permission_classes((permissions.IsAuthenticated, HasVerifiedEmail))
 @authentication_classes((ExpiringTokenAuthentication,))
 def create_leaderboard(request):
-    if request.data == []:
-        response_data = {'error': 'The leaderboard can\'t be blank!'}
-        return Response(response_data, status=status.HTTP_400_BAD_REQUEST)
-
-    serializer = LeaderboardSerializer(data=request.data, many=True)
+    print request.data
+    serializer = LeaderboardSerializer(data=request.data, many=True, allow_empty=False)
     if serializer.is_valid():
         serializer.save()
         response_data = serializer.data
@@ -780,40 +785,18 @@ def create_leaderboard(request):
 @permission_classes((permissions.IsAuthenticated, HasVerifiedEmail))
 @authentication_classes((ExpiringTokenAuthentication,))
 def create_challenge_phase(request, pk):
-    if request.data == []:
-        response_data = {'error': 'The challenge phase can\'t be blank!'}
+    challenge = get_challenge_model(pk) # noqa
+
+    serializer = ChallengePhaseSerializer(data=request.data,
+                                          context={'request': request})
+    if serializer.is_valid():
+        serializer.save()
+        serializer = ChallengePhaseDisplaySerializer(serializer.instance)
+        response_data = serializer.data
+        return Response(response_data, status=status.HTTP_201_CREATED)
+    else:
+        response_data = serializer.errors
         return Response(response_data, status=status.HTTP_400_BAD_REQUEST)
-
-    if request.method in ['POST']:
-
-        challenge = get_challenge_model(pk) # noqa
-
-        serializer = ChallengePhaseUiSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            challenge_phase = get_challenge_phase_model(serializer.instance.pk)
-            serializer = ChallengePhaseSerializer(challenge_phase)
-            response_data = serializer.data
-            return Response(response_data, status=status.HTTP_201_CREATED)
-        else:
-            response_data = serializer.errors
-            return Response(response_data, status=status.HTTP_400_BAD_REQUEST)
-
-    elif request.method in ['PUT', 'PATCH']:
-        challenge_phase = get_challenge_phase_model(pk)
-        serializer = ChallengePhaseUiSerializer(challenge_phase,
-                                                data=request.data,
-                                                context={'request': request},
-                                                partial=True)
-        if serializer.is_valid():
-            serializer.save()
-            challenge_phase = get_challenge_phase_model(serializer.instance.pk)
-            serializer = ChallengePhaseSerializer(challenge_phase, context={'request': request})
-            response_data = serializer.data
-            return Response(response_data, status=status.HTTP_201_CREATED)
-        else:
-            response_data = serializer.data
-            return Response(response_data, status=status.HTTP_400_BAD_REQUEST)
 
 
 @throttle_classes([UserRateThrottle])
@@ -821,11 +804,7 @@ def create_challenge_phase(request, pk):
 @permission_classes((permissions.IsAuthenticated, HasVerifiedEmail))
 @authentication_classes((ExpiringTokenAuthentication,))
 def create_dataset_split(request):
-    if request.data == []:
-        response_data = {'error': 'The dataset split can\'t be blank!'}
-        return Response(response_data, status=status.HTTP_400_BAD_REQUEST)
-
-    serializer = DatasetSplitSerializer(data=request.data, many=True)
+    serializer = DatasetSplitSerializer(data=request.data, many=True, allow_empty=False)
     if serializer.is_valid():
         serializer.save()
         response_data = serializer.data
@@ -840,11 +819,7 @@ def create_dataset_split(request):
 @permission_classes((permissions.IsAuthenticated, HasVerifiedEmail))
 @authentication_classes((ExpiringTokenAuthentication,))
 def create_challenge_phase_split(request):
-    if request.data == []:
-        response_data = {'error': 'The challenge phase split can\'t be blank!'}
-        return Response(response_data, status=status.HTTP_400_BAD_REQUEST)
-
-    serializer = ZipChallengePhaseSplitSerializer(data=request.data, many=True)
+    serializer = ZipChallengePhaseSplitSerializer(data=request.data, many=True, allow_empty=False)
     if serializer.is_valid():
         serializer.save()
         response_data = serializer.data
