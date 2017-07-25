@@ -1821,42 +1821,30 @@ class CreateChallengePhaseTest(BaseChallengePhaseClass, BaseAPITestClass):
         super(CreateChallengePhaseTest, self).setUp()
         self.url = reverse_lazy('challenges:create_challenge_phase',
                                 kwargs={'challenge_pk': self.challenge.pk})
-        self.data = [
-            {"name": "Challenge Phase",
-             "description": "Challenge Phase Description",
-             "leaderboard": True,
-             "is_public": True,
-             "is_submission_public": True,
-             "start_date": "{0}{1}".format(self.challenge_phase.start_date.isoformat(), 'Z').replace("+00:00", ""),
-             "end_date": "{0}{1}".format(self.challenge_phase.end_date.isoformat(), 'Z').replace("+00:00", ""),
-             "max-submissions_per_day": 100,
-             "max_submissions": 1000,
-             "codename": "Challenge Phase code name",
-             "challenge": self.challenge.pk},
-
-            {"name": "Challenge Phase2",
-             "description": "Challenge Phase Description2",
-             "leaderboard": True,
-             "is_public": True,
-             "is_submission_public": True,
-             "start_date": "{0}{1}".format(self.challenge_phase.start_date.isoformat(), 'Z').replace("+00:00", ""),
-             "end_date": "{0}{1}".format(self.challenge_phase.end_date.isoformat(), 'Z').replace("+00:00", ""),
-             "max-submissions_per_day": 100,
-             "max_submissions": 1000,
-             "codename": "Challenge Phase code name2",
-             "challenge": self.challenge.pk}
-            ]
+        self.data = {
+            "name": "Challenge Phase",
+            "description": "Challenge Phase Description",
+            "leaderboard": True,
+            "is_public": True,
+            "is_submission_public": True,
+            "start_date": "{0}{1}".format(self.challenge_phase.start_date.isoformat(), 'Z').replace("+00:00", ""),
+            "end_date": "{0}{1}".format(self.challenge_phase.end_date.isoformat(), 'Z').replace("+00:00", ""),
+            "max-submissions_per_day": 100,
+            "max_submissions": 1000,
+            "codename": "Challenge Phase code name",
+            "challenge": self.challenge.pk
+            }
 
     def test_create_challenge_phase_with_all_data(self):
         self.url = reverse_lazy('challenges:create_challenge_phase',
-                                kwargs={'challenge_pk': self.challenge.pk})
+                                kwargs={'pk': self.challenge.pk})
         response = self.client.post(self.url, self.data)
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
-    def test_create_leaderboard_with_no_data(self):
+    def test_create_challenge_phase_with_no_data(self):
         self.url = reverse_lazy('challenges:create_challenge_phase',
-                                kwargs={'challenge_pk': self.challenge.pk})
-        self.data = []
+                                kwargs={'pk': self.challenge.pk})
+        del self.data["name"]
         response = self.client.post(self.url, self.data)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
